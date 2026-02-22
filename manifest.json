@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Dayflow",
+  "version": "1.0.0",
+  "description": "Your day at a glance — current task, what's next, and how far you've come.",
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Dayflow",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "32":  "icons/icon32.png",
+      "48":  "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "permissions": [
+    "identity",
+    "storage",
+    "alarms",
+    "notifications"
+  ],
+
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/calendar.events.readonly",
+      "https://www.googleapis.com/auth/calendar.readonly"
+    ]
+  },
+
+  "host_permissions": [
+    "https://www.googleapis.com/*"
+  ],
+
+  "icons": {
+    "16":  "icons/icon16.png",
+    "32":  "icons/icon32.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
