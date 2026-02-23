@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dayflow — Privacy Policy</title>
+<style>
+  :root {
+    --bg:       #f7f3f0;
+    --surface:  #ffffff;
+    --lavender: #c9b8f0;
+    --text:     #4a4560;
+    --text-mid: #8b84a8;
+    --text-dim: #b8b2cc;
+    --border:   rgba(180,160,220,0.18);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color: var(--text);
+    line-height: 1.7;
+    padding: 40px 20px;
+  }
+
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    background: var(--surface);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 48px 52px;
+    box-shadow: 0 8px 40px rgba(201,184,240,0.12);
+  }
+
+  .logo {
+    font-family: Georgia, serif;
+    font-size: 28px;
+    letter-spacing: 0.3px;
+    margin-bottom: 8px;
+  }
+  .logo em {
+    font-style: italic;
+    background: linear-gradient(135deg, #c9b8f0, #f0b8c8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 40px;
+  }
+
+  h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 32px 0 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h2:first-of-type { margin-top: 0; }
+
+  p {
+    font-size: 14px;
+    color: var(--text-mid);
+    margin-bottom: 12px;
+  }
+
+  ul {
+    margin: 8px 0 12px 20px;
+    font-size: 14px;
+    color: var(--text-mid);
+  }
+
+  li { margin-bottom: 6px; }
+
+  a {
+    color: #8b6fcc;
+    text-decoration: none;
+  }
+  a:hover { text-decoration: underline; }
+
+  .highlight-box {
+    background: #ede8fc;
+    border-left: 3px solid var(--lavender);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .updated {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="logo">Day<em>flow</em></div>
+  <div class="subtitle">Privacy Policy for the Dayflow Chrome Extension</div>
+
+  <h2>Overview</h2>
+  <p>Dayflow is a Chrome extension that shows your Google Calendar events for today directly in your browser toolbar. This policy explains what data we access, what we do with it, and what we don't do with it.</p>
+
+  <div class="highlight-box">
+    <strong>The short version:</strong> Dayflow reads your calendar events to display them to you. It does not collect, store, share, or transmit your data to any server. Everything stays on your device.
+  </div>
+
+  <h2>What Data We Access</h2>
+  <p>Dayflow requests read-only access to your Google Calendar through the following OAuth scope:</p>
+  <ul>
+    <li><code>https://www.googleapis.com/auth/calendar.events.readonly</code> — this allows the extension to read your calendar events. It cannot create, edit, or delete events.</li>
+  </ul>
+  <p>Specifically, for each calendar event we read: the event title, start time, end time, and event ID. We do not read event descriptions, attendees, attachments, or any other event fields.</p>
+
+  <h2>How We Use Your Data</h2>
+  <p>Your calendar data is used exclusively to display your schedule in the extension popup and toolbar badge. It is:</p>
+  <ul>
+    <li>Fetched directly from the Google Calendar API to your browser</li>
+    <li>Displayed only to you in the extension popup</li>
+    <li>Never sent to any external server, database, or third party</li>
+    <li>Not used for advertising, analytics, or any purpose other than showing your schedule</li>
+  </ul>
+
+  <h2>Local Storage</h2>
+  <p>Dayflow stores a small amount of data locally on your device using Chrome's built-in <code>chrome.storage.local</code> API:</p>
+  <ul>
+    <li><strong>Manually completed event IDs</strong> — so "Mark complete" persists if you close and reopen the popup</li>
+    <li><strong>Streak count and date</strong> — to track how many consecutive days you've used the extension</li>
+  </ul>
+  <p>This data never leaves your device and is not accessible to any third party.</p>
+
+  <h2>OAuth &amp; Google Sign-In</h2>
+  <p>Dayflow uses Google's OAuth 2.0 flow via the Chrome Identity API to authenticate you. Your Google account credentials are handled entirely by Google and Chrome — Dayflow never sees your password or any authentication tokens beyond what Chrome provides for the current session.</p>
+  <p>You can revoke Dayflow's access to your calendar at any time by visiting <a href="https://myaccount.google.com/permissions" target="_blank">Google Account Permissions</a> and removing Dayflow.</p>
+
+  <h2>Third-Party Services</h2>
+  <p>Dayflow makes API calls to <strong>Google Calendar API</strong> (<code>googleapis.com</code>) to fetch your events. This is governed by <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>. No other third-party services are used.</p>
+
+  <h2>Data Retention</h2>
+  <p>Because Dayflow does not collect or store your data on any server, there is no data retention to speak of. The only data stored is what lives in <code>chrome.storage.local</code> on your own device. You can clear this at any time by removing the extension or clearing its storage in Chrome's extension settings.</p>
+
+  <h2>Children's Privacy</h2>
+  <p>Dayflow does not knowingly collect any data from children under the age of 13. The extension does not collect personal data from any user.</p>
+
+  <h2>Changes to This Policy</h2>
+  <p>If we make material changes to this privacy policy, we will update the version in the Chrome Web Store listing. Continued use of the extension after changes constitutes acceptance of the updated policy.</p>
+
+  <h2>Contact</h2>
+  <p>If you have questions about this privacy policy, please open an issue on the project's GitHub repository or contact us at the email listed in the Chrome Web Store listing.</p>
+
+  <div class="updated">Last updated: February 2026 &nbsp;·&nbsp; Dayflow v1.0.0</div>
+
+</div>
+</body>
+</html>

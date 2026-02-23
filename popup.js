@@ -1,9 +1,8 @@
 // ─── DAYFLOW — popup.js ──────────────────────────────────────────
-// All-in-one: calendar helpers + UI logic. No imports needed.
-
-// ─── CALENDAR HELPERS ────────────────────────────────────────────
 
 const CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
+
+// ─── CALENDAR HELPERS ────────────────────────────────────────────
 
 function getAuthToken(interactive = true) {
   return new Promise((resolve, reject) => {
@@ -110,11 +109,80 @@ function eventEmoji(title) {
   return '✦';
 }
 
+// ─── PERSISTENCE ─────────────────────────────────────────────────
+
+// Returns today's date as a "YYYY-MM-DD" key
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Load set of manually-completed event IDs for today
+async function loadCompletedIds() {
+  return new Promise((resolve) => {
+    const key = `completed_${todayKey()}`;
+    chrome.storage.local.get([key], (result) => {
+      resolve(new Set(result[key] || []));
+    });
+  });
+}
+
+// Save a newly completed event ID
+async function saveCompletedId(eventId) {
+  const key = `completed_${todayKey()}`;
+  const existing = await loadCompletedIds();
+  existing.add(eventId);
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [key]: [...existing] }, resolve);
+  });
+}
+
+// Remove a completed event ID (undo)
+async function removeCompletedId(eventId) {
+  const key = `completed_${todayKey()}`;
+  const existing = await loadCompletedIds();
+  existing.delete(eventId);
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [key]: [...existing] }, resolve);
+  });
+}
+
+// ─── STREAK ──────────────────────────────────────────────────────
+
+async function getStreak() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['streak', 'streakLastDate'], (result) => {
+      const streak       = result.streak || 1;
+      const lastDate     = result.streakLastDate || todayKey();
+      resolve({ streak, lastDate });
+    });
+  });
+}
+
+async function updateStreak() {
+  const { streak, lastDate } = await getStreak();
+  const today = todayKey();
+  if (lastDate === today) return streak; // already updated today
+
+  // Check if lastDate was yesterday
+  const last = new Date(lastDate);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
+
+  const newStreak = lastDate === yKey ? streak + 1 : 1;
+
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ streak: newStreak, streakLastDate: today }, () => resolve(newStreak));
+  });
+}
+
 // ─── STATE ───────────────────────────────────────────────────────
 
-let events      = [];
-let classified  = { current: null, next: null, upcoming: [], past: [] };
-let drawerOpen  = false;
+let events       = [];
+let classified   = { current: null, next: null, upcoming: [], past: [] };
+let completedIds = new Set();
+let drawerOpen   = false;
 let tickInterval = null;
 
 // ─── INIT ────────────────────────────────────────────────────────
@@ -122,6 +190,15 @@ let tickInterval = null;
 document.addEventListener('DOMContentLoaded', async () => {
   setDate();
   showLoading(true);
+
+  // Load streak
+  const streak = await updateStreak();
+  const pill = document.getElementById('streakPill');
+  if (streak > 1) {
+    pill.textContent = `🔥 ${streak} day streak`;
+  } else {
+    pill.textContent = '🌸 day 1';
+  }
 
   try {
     const token = await getAuthToken(true);
@@ -157,11 +234,32 @@ async function loadAndRender(token) {
     } else throw err;
   }
 
+  // Load persisted completed IDs
+  completedIds = await loadCompletedIds();
+
+  // Apply persisted completions to event objects
+  applyCompletedIds();
+
   showLoading(false);
   render();
 
   if (tickInterval) clearInterval(tickInterval);
-  tickInterval = setInterval(render, 30_000);
+  tickInterval = setInterval(async () => {
+    completedIds = await loadCompletedIds();
+    applyCompletedIds();
+    render();
+  }, 30_000);
+}
+
+// Override event end times for manually completed events
+function applyCompletedIds() {
+  const now = new Date();
+  events.forEach(e => {
+    if (completedIds.has(e.id) && e.end > now) {
+      e._manuallyCompleted = true;
+      e.end = new Date(Math.min(e.end.getTime(), now.getTime()));
+    }
+  });
 }
 
 // ─── RENDER ──────────────────────────────────────────────────────
@@ -175,38 +273,37 @@ function render() {
   renderNext(classified.next, now);
   renderDrawer(classified);
 
-  // Update expand button
   const total  = events.length;
   const shown  = (classified.current ? 1 : 0) + (classified.next ? 1 : 0);
   const hidden = total - shown;
   const expandBtn = document.getElementById('expandBtn');
 
-  if (hidden <= 0) {
+  if (total === 0) {
+    expandBtn.style.display = 'none';
+  } else if (hidden <= 0 && !drawerOpen) {
     expandBtn.style.display = 'none';
   } else {
     expandBtn.style.display = 'flex';
     document.getElementById('expandLabel').textContent = drawerOpen
-      ? 'hide tasks'
-      : `${hidden} more task${hidden !== 1 ? 's' : ''} today`;
+      ? 'hide schedule'
+      : `${hidden > 0 ? hidden + ' more task' + (hidden !== 1 ? 's' : '') : 'see full schedule'} today`;
   }
 }
 
 function renderDayProgress(now) {
   const mins = now.getHours() * 60 + now.getMinutes();
-  // 0 = midnight, 1440 = next midnight — full 24h
   const pct  = Math.min(100, Math.max(0, (mins / 1440) * 100));
   document.getElementById('arcFill').style.width = pct + '%';
   document.getElementById('dayPct').textContent  = Math.round(pct) + '%';
 
-  // Orb emoji changes with time of day
   const h = now.getHours();
-  let orb = '🌙'; // midnight default
-  if (h >= 5  && h < 7)  orb = '🌅'; // dawn
-  if (h >= 7  && h < 11) orb = '☀️'; // morning
-  if (h >= 11 && h < 14) orb = '🌤️'; // midday
-  if (h >= 14 && h < 17) orb = '🌇'; // afternoon
-  if (h >= 17 && h < 20) orb = '🌆'; // evening
-  if (h >= 20 && h < 23) orb = '🌃'; // night
+  let orb = '🌙';
+  if (h >= 5  && h < 7)  orb = '🌅';
+  if (h >= 7  && h < 11) orb = '☀️';
+  if (h >= 11 && h < 14) orb = '🌤️';
+  if (h >= 14 && h < 17) orb = '🌇';
+  if (h >= 17 && h < 20) orb = '🌆';
+  if (h >= 20 && h < 23) orb = '🌃';
   document.querySelector('.arc-orb').textContent = orb;
 }
 
@@ -217,8 +314,8 @@ function renderNow(current, now) {
     card.classList.add('idle');
     document.getElementById('nowTitle').textContent   = 'No event right now';
     document.getElementById('nowTime').textContent    = 'Enjoy the free time ✦';
-    document.getElementById('questFill').style.width = '0%';
-    document.getElementById('minLeft').textContent   = '';
+    document.getElementById('questFill').style.width  = '0%';
+    document.getElementById('minLeft').textContent    = '';
     document.getElementById('completeBtn').style.display = 'none';
     return;
   }
@@ -253,7 +350,7 @@ function renderDrawer({ past, current, next, upcoming }) {
   const all = [...past, ...(current ? [current] : []), ...(next ? [next] : []), ...upcoming];
 
   if (all.length === 0) {
-    container.innerHTML = `<div class="drawer-empty">No events today</div>`;
+    container.innerHTML = `<div class="drawer-empty">No events today ✦</div>`;
     return;
   }
 
@@ -268,6 +365,27 @@ function renderDrawer({ past, current, next, upcoming }) {
     const check = document.createElement('div');
     check.className = 't-check ' + (isDone ? 'checked' : isCurrent ? 'current' : 'empty');
     check.textContent = isDone ? '✓' : '';
+
+    // Allow clicking check to toggle manual completion
+    if (isCurrent) {
+      check.style.cursor = 'pointer';
+      check.title = 'Mark complete';
+      check.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onMarkComplete();
+      });
+    } else if (isDone && completedIds.has(event.id)) {
+      check.style.cursor = 'pointer';
+      check.title = 'Undo completion';
+      check.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await removeCompletedId(event.id);
+        completedIds = await loadCompletedIds();
+        // Restore original end time by re-fetching — simplest approach: reload
+        const token = await getAuthToken(false);
+        await loadAndRender(token);
+      });
+    }
 
     const info = document.createElement('div');
     info.className = 't-info';
@@ -293,10 +411,19 @@ function toggleDrawer() {
 
 // ─── MARK COMPLETE ───────────────────────────────────────────────
 
-function onMarkComplete() {
+async function onMarkComplete() {
   if (!classified.current) return;
-  classified.current.end = new Date();
+  const event = classified.current;
 
+  // Persist to storage
+  await saveCompletedId(event.id);
+  completedIds.add(event.id);
+
+  // Optimistically end the event now
+  event._manuallyCompleted = true;
+  event.end = new Date();
+
+  // Flash animation
   const flash = document.getElementById('flash');
   const pop   = document.getElementById('xpFloat');
   flash.classList.remove('pop'); void flash.offsetWidth; flash.classList.add('pop');
