@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dayflow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Your day at a glance — current task, what's next, and how far you've come.",
 
   "action": {
